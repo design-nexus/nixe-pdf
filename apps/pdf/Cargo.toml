@@ -3,7 +3,7 @@ name = "nixe-pdf"
 version = "0.1.0"
 description = "A PDF viewer and editor for Omarchy: annotate, fill forms, sign, reorder pages and edit text"
 license = "MIT"
-repository = "https://github.com/design-nexus/nixe"
+repository = "https://github.com/design-nexus/nixe-pdf"
 authors = ["Ken Smith"]
 edition = "2024"
 
@@ -12,10 +12,10 @@ name = "nixe-pdf"
 path = "src/main.rs"
 
 [dependencies]
-nixe-core = { path = "../../crates/nixe-core" }
+nixe-core = { git = "file:///home/ken/Projects/nixe-migration-97c1899-reviewed/nixe-core", rev = "e4595e68a4fd9b44bd15e95311ace1d0fb669bc4" }
 serde_json = "1"
-nixe-ui = { path = "../../crates/nixe-ui" }
-nixe-theme = { path = "../../crates/nixe-theme" }
+nixe-ui = { git = "file:///home/ken/Projects/nixe-migration-97c1899-reviewed/nixe-design", rev = "6997fb93fe248e20a19277dbd3ef219cdba18683" }
+nixe-theme = { git = "file:///home/ken/Projects/nixe-migration-97c1899-reviewed/nixe-design", rev = "6997fb93fe248e20a19277dbd3ef219cdba18683" }
 anyhow = "1.0.104"
 async-channel = "2"
 cairo-rs = { version = "0.22", features = ["png"] }

@@ -1,0 +1,10 @@
+{
+  "application": "pdf",
+  "directory": "pdf",
+  "packages": [
+    "nixe-pdf"
+  ],
+  "manifest": "Cargo.toml",
+  "prepare": [],
+  "binaries": []
+}
