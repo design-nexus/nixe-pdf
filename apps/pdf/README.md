@@ -52,7 +52,7 @@ Files that are encrypted can be read (it asks for the password) but not edited.
 ## Install
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/design-nexus/nixe/main/install.sh | bash -s -- pdf
+curl -fsSL https://raw.githubusercontent.com/design-nexus/nixe-pdf/main/install.sh | bash -s -- pdf
 ```
 
 This installs GTK 4 and poppler-glib if they're missing, builds with Cargo, and installs
