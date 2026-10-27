@@ -20,9 +20,9 @@ use gtk::prelude::*;
 use gtk::{gio, glib};
 use std::path::PathBuf;
 
-pub const APP_ID: &str = "io.github.design_nexus.nixe.Pdf";
+pub const APP_ID: &str = "io.github.design_nexus.nyx.Pdf";
 
-const USAGE: &str = "Usage: nixe-pdf [OPTIONS] [FILE…]\n\
+const USAGE: &str = "Usage: nyx-pdf [OPTIONS] [FILE…]\n\
 \n\
   FILE            open this PDF (several files open in tabs)\n\
   --page N        open FILE on page N (1 is the first)\n\
@@ -30,8 +30,8 @@ const USAGE: &str = "Usage: nixe-pdf [OPTIONS] [FILE…]\n\
   --toggle        close the window if it's open, otherwise open it (for a keybinding)\n";
 
 fn main() -> glib::ExitCode {
-    nixe_core::app::init(nixe_core::app::App { slug: "nixe-pdf", name: "PDF" });
-    nixe_core::migrate::from(&["nexus-pdf"]);
+    nyx_core::app::init(nyx_core::app::App { slug: "nyx-pdf", name: "PDF" });
+    nyx_core::migrate::from(&["nexus-pdf"]);
     let args: Vec<String> = std::env::args().collect();
     if args.iter().any(|a| a == "--help" || a == "-h") {
         print!("{USAGE}");
@@ -49,8 +49,8 @@ fn main() -> glib::ExitCode {
     // its arguments to the copy that's open.
     let id = std::env::var("NPDF_APP_ID").unwrap_or_else(|_| APP_ID.to_string());
     let app = gtk::Application::builder().application_id(id).flags(gio::ApplicationFlags::HANDLES_COMMAND_LINE).build();
-    // Nixe Assistant opens, reads and searches PDFs through this (primary instance only).
-    app.connect_startup(|app| nixe_core::control::serve(app, control::tools(), control::handle));
+    // Nyx Assistant opens, reads and searches PDFs through this (primary instance only).
+    app.connect_startup(|app| nyx_core::control::serve(app, control::tools(), control::handle));
     app.connect_command_line(|app, cl| {
         let argv: Vec<String> = cl.arguments().iter().map(|a| a.to_string_lossy().to_string()).collect();
         let has = |flag: &str| argv.iter().any(|a| a == flag);

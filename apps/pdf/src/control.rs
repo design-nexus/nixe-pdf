@@ -1,8 +1,8 @@
-//! PDF's tools on the control interface (`nixe_core::control`), for Nixe Assistant: open a
+//! PDF's tools on the control interface (`nyx_core::control`), for Nyx Assistant: open a
 //! document, read its text, find words in it, and turn to a page. Nothing is edited.
 
 use crate::{doc, viewer};
-use nixe_core::control::{self, text};
+use nyx_core::control::{self, text};
 use serde_json::{json, Value};
 
 pub fn tools() -> Value {

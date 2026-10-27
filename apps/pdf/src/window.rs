@@ -6,7 +6,7 @@
 use crate::sections::{self, Section};
 use crate::{doc, prefs, settings_dialog, theme, viewer, widgets};
 use gtk::prelude::*;
-use nixe_ui::chrome;
+use nyx_ui::chrome;
 use gtk::{gdk, glib};
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
@@ -49,7 +49,7 @@ pub fn present(app: &gtk::Application, section: Option<&str>) {
     theme::install();
     install_icons();
     build(app);
-    let start = section.map(String::from).unwrap_or_else(|| nixe_theme::start_page("library", &prefs::get().last_section));
+    let start = section.map(String::from).unwrap_or_else(|| nyx_theme::start_page("library", &prefs::get().last_section));
     navigate(&start);
     // Developer aid: NPDF_SNAPSHOT=/path.png renders the window to a PNG
     // (invisibly) and quits, so layouts can be checked without a visible window.
@@ -112,7 +112,7 @@ fn build(app: &gtk::Application) {
     window.add_css_class("pdf-window");
     // No client-side titlebar: Hyprland manages the window.
     window.set_titlebar(Some(&gtk::Box::new(gtk::Orientation::Horizontal, 0)));
-    nixe_ui::keys::install(&window, nixe_ui::keys::Common { settings: Some(settings_dialog::open), shortcuts: Some(show_shortcuts), close: false, palette: None });
+    nyx_ui::keys::install(&window, nyx_ui::keys::Common { settings: Some(settings_dialog::open), shortcuts: Some(show_shortcuts), close: false, palette: None });
     window.set_icon_name(Some(crate::APP_ID));
 
     let sections = sections::all();
@@ -824,7 +824,7 @@ pub fn navigate(id: &str) {
 /// Show a short message at the bottom of the window.
 pub fn toast(message: &str) {
     let Some(ui) = ui() else {
-        eprintln!("nixe-pdf: {message}");
+        eprintln!("nyx-pdf: {message}");
         return;
     };
     let overlay = ui.borrow().overlay.clone();

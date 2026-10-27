@@ -6,7 +6,7 @@ members = ["apps/pdf"]
 edition = "2024"
 license = "MIT"
 authors = ["Ken Smith"]
-repository = "https://github.com/design-nexus/nixe-pdf"
+repository = "https://github.com/design-nexus/nyx-pdf"
 
 [profile.release]
 lto = "thin"

@@ -1,4 +1,4 @@
-//! Signatures: draw one, or pick a picture, keep it in `~/.local/share/nixe-pdf/signatures`.
+//! Signatures: draw one, or pick a picture, keep it in `~/.local/share/nyx-pdf/signatures`.
 
 use crate::doc::annots::Picture;
 use crate::{paths, widgets, window};

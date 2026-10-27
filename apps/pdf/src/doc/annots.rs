@@ -147,10 +147,12 @@ fn pdf_date() -> String {
 
 // ---------- This app's own keys ----------
 
-/// Our private annotation keys are `Nixe<name>`; files edited before the suite
-/// was called Nixe have `Nexus<name>`, which still count.
+/// Our private annotation keys are `Nyx<name>`; files edited before the suite
+/// was called Nyx have `Nixe<name>`, or earlier `Nexus<name>`, which still count.
 fn get_own<'a>(d: &'a Dictionary, name: &str) -> lopdf::Result<&'a Object> {
-    d.get(format!("Nixe{name}").as_bytes()).or_else(|_| d.get(format!("Nexus{name}").as_bytes()))
+    d.get(format!("Nyx{name}").as_bytes())
+        .or_else(|_| d.get(format!("Nixe{name}").as_bytes()))
+        .or_else(|_| d.get(format!("Nexus{name}").as_bytes()))
 }
 
 fn has_own(d: &Dictionary, name: &str) -> bool {
@@ -161,7 +163,7 @@ fn unique_name() -> String {
     use std::sync::atomic::{AtomicU32, Ordering};
     static N: AtomicU32 = AtomicU32::new(0);
     let t = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_nanos()).unwrap_or(0);
-    format!("nixe-{t:x}-{}", N.fetch_add(1, Ordering::Relaxed))
+    format!("nyx-{t:x}-{}", N.fetch_add(1, Ordering::Relaxed))
 }
 
 // ---------- Fonts ----------
@@ -532,7 +534,7 @@ pub fn add_text_box(doc: &mut Document, page: ObjectId, view: Rect, text: &str, 
     let rect = geom.rect_to_pdf(&view);
     let mut d = base_dict("FreeText", rect, colour, text, author);
     d.set("DA", Object::string_literal(format!("/Helv {size:.1} Tf {} rg", c3(colour))));
-    d.set("NixeSize", real(size));
+    d.set("NyxSize", real(size));
     let id = doc.add_object(d);
     rebuild_ap(doc, page, id)?;
     push_annot(doc, page, id)?;
@@ -556,10 +558,10 @@ pub fn add_edit(
     let rect = geom.rect_to_pdf(&view);
     let mut d = base_dict("FreeText", rect, colour, text, author);
     d.set("DA", Object::string_literal(format!("/Helv {size:.1} Tf {} rg", c3(colour))));
-    d.set("NixeSize", real(size));
-    d.set("NixeEdit", true);
-    d.set("NixeBg", colour_array(background));
-    d.set("NixeFont", Object::Name(face.base_font().as_bytes().to_vec()));
+    d.set("NyxSize", real(size));
+    d.set("NyxEdit", true);
+    d.set("NyxBg", colour_array(background));
+    d.set("NyxFont", Object::Name(face.base_font().as_bytes().to_vec()));
     let id = doc.add_object(d);
     rebuild_ap(doc, page, id)?;
     push_annot(doc, page, id)?;
@@ -842,7 +844,7 @@ mod tests {
 
     #[test]
     fn reads_keys_from_before_the_rename() {
-        for key in ["NexusEdit", "NixeEdit"] {
+        for key in ["NexusEdit", "NixeEdit", "NyxEdit"] {
             let mut d = Dictionary::new();
             d.set("Subtype", Object::Name(b"FreeText".to_vec()));
             d.set(key, true);

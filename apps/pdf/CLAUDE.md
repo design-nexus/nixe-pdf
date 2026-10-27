@@ -1,7 +1,7 @@
 # PDF — notes for working on this repo
 
-- The command, crate and config/data/cache folders are all `nixe-pdf`.
-  App id `io.github.design_nexus.nixe.Pdf`.
+- The command, crate and config/data/cache folders are all `nyx-pdf`.
+  App id `io.github.design_nexus.nyx.Pdf`.
 
 - GTK4 (gtk4-rs 0.11) + Rust, no libadwaita. The window is one flat, monospace surface
   split by hairlines (see `STYLE.md`): the sidebar (its head holds the toggle and search),
@@ -9,7 +9,7 @@
   hides all of it. Pages have no title header. Settings is a card over the window
   (`settings_dialog.rs`) listing the settings page's groups; `navigate("settings")` opens
   it. The theme,
-  widgets, settings card and window frame come from the `nixe-*` crates. Every colour is a
+  widgets, settings card and window frame come from the `nyx-*` crates. Every colour is a
   `@theme_*` token. The only fixed colours are page-content ones: form-field paper and
   ink, the signature pad, and the dark-blue signature pen.
 - **poppler-rs** renders and reads (text, search, outline, links, form fields); **lopdf**
@@ -24,7 +24,7 @@
   file (`gen saved` and the path) so `offer_recovery` can bring back unsaved edits
   after a crash.
 - **Generations** (`doc/mod.rs`): the open file is copied to
-  `~/.cache/nixe-pdf/work/<pid>-<n>/gen-0.pdf`. Every edit loads the current generation
+  `~/.cache/nyx-pdf/work/<pid>-<n>/gen-0.pdf`. Every edit loads the current generation
   with lopdf, changes it, writes `gen-N+1.pdf` and reopens it in poppler. Undo and redo move
   between generations; Save copies the current one over the original atomically. Form
   edits go through poppler (`Doc::edit_forms`) instead, then the same.
@@ -34,7 +34,7 @@
   that same rotated frame and are flipped (`page_h - y`). `PageGeom` converts to and from
   PDF space, including `/Rotate` and the crop box. Annotations that draw text or pictures
   use an upright local frame plus a `/Matrix` so they stay upright on rotated pages.
-- **Edit text** is a FreeText annotation (`NixeEdit`; files edited before the rename say `NexusEdit`, and both are read) with an opaque background sampled
+- **Edit text** is a FreeText annotation (`NyxEdit`; files edited before the renames say `NixeEdit` or `NexusEdit`, and all are read) with an opaque background sampled
   from the page, not a patch to the content stream, so it stays removable and re-editable.
 - **Rendering** (`doc/render.rs`): one worker thread owns its own poppler document and
   renders the newest highest-priority request first (detail 2, pages 1, thumbnails 0);
@@ -51,7 +51,7 @@
   scrolled area come from `View::bounds_of`, which measures against the page column:
   measuring against the viewport mixes in the scroll offset, depending on whether GTK
   has laid out since the last scroll.
-- Control (`src/control.rs`): `nixe_core::control` on the app's bus name, for Nixe Assistant: `pdf.open`, `read`, `search`, `go_to` (nothing edits).
+- Control (`src/control.rs`): `nyx_core::control` on the app's bus name, for Nyx Assistant: `pdf.open`, `read`, `search`, `go_to` (nothing edits).
 - Checks: `cargo clippy --all-targets -- -D warnings`, `cargo test` (tests render real PDFs
   made in code: `src/testpdf.rs`). Layout check:
   `NPDF_SNAPSHOT=/tmp/x.png pdf FILE` (renders offscreen and quits; the compositor decides
