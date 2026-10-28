@@ -152,7 +152,7 @@ impl Panel {
             picture.set_can_shrink(true);
             picture.set_content_fit(gtk::ContentFit::Fill);
             picture.set_size_request(tw, (f64::from(tw) * h / w.max(1.0)).round() as i32);
-            let label = widgets::label(&(i + 1).to_string(), "mono");
+            let label = widgets::label(&(i + 1).to_string(), "tnum");
             label.add_css_class("thumb-number");
             label.set_halign(gtk::Align::Center);
             card.append(&picture);

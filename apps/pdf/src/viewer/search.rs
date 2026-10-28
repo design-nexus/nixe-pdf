@@ -49,7 +49,7 @@ impl Search {
         entry.set_placeholder_text(Some("Search this document"));
         entry.add_css_class("settings-search");
         entry.set_hexpand(true);
-        let readout = widgets::label("", "mono");
+        let readout = widgets::label("", "tnum");
         readout.add_css_class("dim");
         let case = gtk::ToggleButton::with_label("Aa");
         case.set_tooltip_text(Some("Match case"));

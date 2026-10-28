@@ -13,7 +13,7 @@ const GROUPS: &[(&str, &str, &str)] = &[
     ("Viewing", "npdf-document-symbolic", "Zoom, layout, reading"),
     ("Editing", "document-edit-symbolic", "Markup, your name, signatures"),
     ("Files", "folder-documents-symbolic", "Recent files, opening"),
-    ("This window", "applications-graphics-symbolic", "Theme, glow, motion"),
+    ("This window", "applications-graphics-symbolic", "Theme, accent, motion"),
     ("Keyboard", "input-keyboard-symbolic", "Shortcuts"),
 ];
 

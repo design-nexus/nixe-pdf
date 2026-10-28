@@ -3,15 +3,22 @@
 - The command, crate and config/data/cache folders are all `nyx-pdf`.
   App id `io.github.design_nexus.nyx.Pdf`.
 
-- GTK4 (gtk4-rs 0.11) + Rust, no libadwaita. The window is one flat, monospace surface
-  split by hairlines (see `STYLE.md`): the sidebar (its head holds the toggle and search),
-  the page and a status bar (`F1 Shortcuts` · open file and page, settings); fullscreen
-  hides all of it. Pages have no title header. Settings is a card over the window
-  (`settings_dialog.rs`) listing the settings page's groups; `navigate("settings")` opens
-  it. The theme,
-  widgets, settings card and window frame come from the `nyx-*` crates. Every colour is a
-  `@theme_*` token. The only fixed colours are page-content ones: form-field paper and
-  ink, the signature pad, and the dark-blue signature pen.
+- GTK4 (gtk4-rs 0.11) + Rust, no libadwaita. Nyx Design 2.0 (`nyx_theme::use_design_2()`,
+  see `STYLE.md`): one blended surface with no lines between areas. The unified header
+  (`chrome::app_header`) shows the app, the subtitle (the page, or the open file while
+  reading) and the sidebar toggle; while the Document page shows a file, the viewer's
+  `header_parts()` add back/forward and the page number in the middle and zoom, fit,
+  layout and the `⋯` menu (F10) at the end; search and Settings are always last. The
+  library's file search is a `bar-search` entry in the header's middle. No status bar.
+  Under the header: the sidebar (icon-only below 980 px or with Ctrl+B) and the page.
+  The Document page has pill tabs and a tool strip (panel toggle, tools, colour; undo,
+  redo, and Save as the accent square while there are unsaved edits). Fullscreen and
+  reading mode (R) hide the header and sidebar. Settings is a card over the window
+  (`settings_dialog.rs`) listing the settings page's groups, with the shared Accent row;
+  `navigate("settings")` opens it. The theme, widgets, settings card and header come
+  from the `nyx-*` crates. Every colour is a `@theme_*` token. The only fixed colours are
+  page-content ones: form-field paper and ink, the signature pad, and the dark-blue
+  signature pen.
 - **poppler-rs** renders and reads (text, search, outline, links, form fields); **lopdf**
   writes. poppler-rs can't create highlights, ink, notes or stamps and hides the fields of
   link, outline and form-field mappings, so `doc/annots.rs` writes annotations (with their

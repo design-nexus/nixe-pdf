@@ -137,6 +137,11 @@ pub struct View {
     strip: gtk::Box,
     left: gtk::Box,
     right: gtk::Box,
+    /// Back, forward and the page number, for the window header's middle.
+    head_center: gtk::Box,
+    /// Zoom, fit, layout and the more menu, for the end of the window header.
+    head_end: gtk::Box,
+    more_btn: gtk::MenuButton,
     pub search: search::Search,
     programmatic: Cell<bool>,
     visible_queued: Cell<bool>,
@@ -211,9 +216,10 @@ fn icon_btn(icon: &str, tooltip: &str) -> gtk::Button {
     b
 }
 
-fn sep() -> gtk::Separator {
-    let s = gtk::Separator::new(gtk::Orientation::Vertical);
-    s.add_css_class("tb-sep");
+/// Room between groups of tools.
+fn sep() -> gtk::Box {
+    let s = widgets::hbox(0);
+    s.add_css_class("tb-gap");
     s
 }
 
@@ -378,31 +384,55 @@ impl View {
         colour_btn.set_visible(false);
         left.append(&colour_btn);
 
-        let zout = icon_btn("zoom-out-symbolic", "Zoom out (Ctrl+−)");
-        let zin = icon_btn("zoom-in-symbolic", "Zoom in (Ctrl++)");
-        let zwidth = icon_btn("npdf-fit-width-symbolic", "Fit width (Ctrl+0)");
-        let zpage = icon_btn("npdf-fit-page-symbolic", "Fit page (Ctrl+9)");
-        for b in [&zout, &zin, &zwidth, &zpage] {
-            b.add_css_class("tb-btn");
-        }
+        // ----- In the window header -----
+        // The middle: back and forward after a link, and the page number.
+        let head_center = widgets::hbox(2);
+        head_center.set_valign(gtk::Align::Center);
+        let back_btn = widgets::bar_button("go-previous-symbolic", "Back to where you were (Alt+←)");
+        let forward_btn = widgets::bar_button("go-next-symbolic", "Forward again (Alt+→)");
+        back_btn.connect_clicked(|_| go_back());
+        forward_btn.connect_clicked(|_| go_forward());
+        head_center.append(&back_btn);
+        head_center.append(&forward_btn);
+
+        let nav = widgets::hbox(6);
+        nav.add_css_class("page-nav");
+        let page_entry = gtk::Entry::new();
+        page_entry.add_css_class("page-entry");
+        page_entry.set_width_chars(3);
+        page_entry.set_max_width_chars(5);
+        EditableExt::set_alignment(&page_entry, 0.5);
+        page_entry.set_tooltip_text(Some("Go to page"));
+        let total = widgets::label("/ 1", "page-total");
+        nav.append(&page_entry);
+        nav.append(&total);
+        nav.set_valign(gtk::Align::Center);
+        head_center.append(&nav);
+
+        // The end: zoom, fit, layout and the actions without a button of their own.
+        let head_end = widgets::hbox(2);
+        head_end.set_valign(gtk::Align::Center);
+        let zout = widgets::bar_button("zoom-out-symbolic", "Zoom out (Ctrl+−)");
+        let zin = widgets::bar_button("zoom-in-symbolic", "Zoom in (Ctrl++)");
+        let zwidth = widgets::bar_button("npdf-fit-width-symbolic", "Fit width (Ctrl+0)");
+        let zpage = widgets::bar_button("npdf-fit-page-symbolic", "Fit page (Ctrl+9)");
         zout.connect_clicked(|_| zoom_by(1.0 / 1.2));
         zin.connect_clicked(|_| zoom_by(1.2));
         zwidth.connect_clicked(|_| zoom_fit("fit-width"));
         zpage.connect_clicked(|_| zoom_fit("fit-page"));
-        let zoom_label = widgets::label("100%", "mono");
-        zoom_label.add_css_class("zoom-readout");
+        let zoom_label = widgets::label("100%", "zoom-readout");
         zoom_label.set_width_chars(5);
         zoom_label.set_xalign(0.5);
-        right.append(&zout);
-        right.append(&zoom_label);
-        right.append(&zin);
-        right.append(&zwidth);
-        right.append(&zpage);
+        head_end.append(&zout);
+        head_end.append(&zoom_label);
+        head_end.append(&zin);
+        head_end.append(&zwidth);
+        head_end.append(&zpage);
 
         let layout_btn = gtk::MenuButton::new();
         layout_btn.set_icon_name("npdf-layout-symbolic");
         layout_btn.set_tooltip_text(Some("Page layout"));
-        layout_btn.add_css_class("tb-menu");
+        layout_btn.add_css_class("bar-button");
         layout_btn.set_valign(gtk::Align::Center);
         let layout_pop = gtk::Popover::new();
         layout_pop.add_css_class("menu-popover");
@@ -411,35 +441,23 @@ impl View {
             layout_pop.connect_show(move |_| lp.set_child(Some(&layout_menu(&lp))));
         }
         layout_btn.set_popover(Some(&layout_pop));
-        right.append(&layout_btn);
-        right.append(&sep());
+        head_end.append(&layout_btn);
 
-        let back_btn = icon_btn("go-previous-symbolic", "Back to where you were (Alt+←)");
-        let forward_btn = icon_btn("go-next-symbolic", "Forward again (Alt+→)");
-        for b in [&back_btn, &forward_btn] {
-            b.add_css_class("tb-btn");
-            right.append(b);
+        let more_btn = gtk::MenuButton::new();
+        more_btn.set_icon_name("view-more-symbolic");
+        more_btn.set_tooltip_text(Some("More (F10)"));
+        more_btn.add_css_class("bar-button");
+        more_btn.set_valign(gtk::Align::Center);
+        let more_pop = gtk::Popover::new();
+        more_pop.add_css_class("menu-popover");
+        {
+            let mp = more_pop.clone();
+            more_pop.connect_show(move |_| mp.set_child(Some(&more_menu(&mp))));
         }
-        back_btn.connect_clicked(|_| go_back());
-        forward_btn.connect_clicked(|_| go_forward());
+        more_btn.set_popover(Some(&more_pop));
+        head_end.append(&more_btn);
 
-        let nav = widgets::hbox(6);
-        nav.add_css_class("page-nav");
-        let page_entry = gtk::Entry::new();
-        page_entry.add_css_class("mono");
-        page_entry.add_css_class("page-entry");
-        page_entry.set_width_chars(3);
-        page_entry.set_max_width_chars(5);
-        EditableExt::set_alignment(&page_entry, 0.5);
-        page_entry.set_tooltip_text(Some("Go to page"));
-        let total = widgets::label("/ 1", "mono");
-        total.add_css_class("dim");
-        nav.append(&page_entry);
-        nav.append(&total);
-        nav.set_valign(gtk::Align::Center);
-        right.append(&nav);
-        right.append(&sep());
-
+        // ----- The strip's right: history and saving -----
         let undo_btn = icon_btn("edit-undo-symbolic", "Undo (Ctrl+Z)");
         let redo_btn = icon_btn("edit-redo-symbolic", "Redo (Ctrl+Shift+Z)");
         for b in [&undo_btn, &redo_btn] {
@@ -449,27 +467,13 @@ impl View {
         undo_btn.connect_clicked(|_| doc::undo());
         redo_btn.connect_clicked(|_| doc::redo());
 
-        let save_btn = widgets::labeled_button("document-save-symbolic", "Save");
+        // The view's one primary button, in the accent while there's something to save.
+        let save_btn = icon_btn("document-save-symbolic", "Save (Ctrl+S)");
         save_btn.add_css_class("save-button");
-        save_btn.set_tooltip_text(Some("Save (Ctrl+S)"));
         save_btn.set_valign(gtk::Align::Center);
         save_btn.set_margin_start(6);
         save_btn.connect_clicked(|_| doc::save());
         right.append(&save_btn);
-
-        let more_btn = gtk::MenuButton::new();
-        more_btn.set_icon_name("view-more-symbolic");
-        more_btn.set_tooltip_text(Some("More: save a copy, print, present, close"));
-        more_btn.add_css_class("tb-menu");
-        more_btn.set_valign(gtk::Align::Center);
-        let more_pop = gtk::Popover::new();
-        more_pop.add_css_class("menu-popover");
-        {
-            let mp = more_pop.clone();
-            more_pop.connect_show(move |_| mp.set_child(Some(&more_menu(&mp))));
-        }
-        more_btn.set_popover(Some(&more_pop));
-        right.append(&more_btn);
         // The strip never holds the window wide: it stacks when there's no room (see
         // `apply_strip`), and in the narrowest windows it can be scrolled sideways.
         let strip_scroll = gtk::ScrolledWindow::builder()
@@ -588,6 +592,9 @@ impl View {
             strip,
             left,
             right,
+            head_center,
+            head_end,
+            more_btn,
             search,
             programmatic: Cell::new(false),
             visible_queued: Cell::new(false),
@@ -1208,7 +1215,7 @@ impl View {
             let t = widgets::label(title, "popover-title");
             t.set_hexpand(true);
             head.append(&t);
-            let readout = widgets::label("", "mono");
+            let readout = widgets::label("", "tnum");
             readout.add_css_class("dim");
             head.append(&readout);
             bx.append(&head);
@@ -1597,6 +1604,18 @@ fn close_doc(d: &Rc<Doc>) {
 pub fn focus_search() {
     if let Some(v) = view() {
         v.search.open();
+    }
+}
+
+/// The page controls and the view controls, for the window header to place.
+pub fn header_parts() -> Option<(gtk::Box, gtk::Box)> {
+    view().map(|v| (v.head_center.clone(), v.head_end.clone()))
+}
+
+/// F10: the more menu in the header.
+pub fn open_more_menu() {
+    if let Some(v) = view() {
+        v.more_btn.popup();
     }
 }
 

@@ -1,7 +1,7 @@
-//! The main window: a top bar (sidebar toggle, where you are, search,
-//! settings, close), the navigation sidebar, a stack of pages built the first
-//! time they're shown, and a status bar. Settings opens as a card over the
-//! window (see `settings_dialog`).
+//! The main window: the header (the app and where you are, the sidebar toggle;
+//! the open file's page and view controls while reading; search and settings),
+//! the navigation sidebar and a stack of pages built the first time they're
+//! shown. Settings opens as a card over the window (see `settings_dialog`).
 
 use crate::sections::{self, Section};
 use crate::{doc, prefs, settings_dialog, theme, viewer, widgets};
@@ -21,9 +21,14 @@ struct Ui {
     sections: Vec<Section>,
     current: String,
     overlay: gtk::Overlay,
-    /// The search strip and the status bar, hidden in fullscreen.
+    /// The header, hidden in fullscreen and reading mode.
     chrome: Vec<gtk::Widget>,
     search: gtk::SearchEntry,
+    header: chrome::AppHeader,
+    /// The open file's page controls (middle) and view controls (end), filled in
+    /// when the document page is built and shown only while it is.
+    doc_center: gtk::Box,
+    doc_end: gtk::Box,
 }
 
 thread_local! {
@@ -108,7 +113,7 @@ fn nav_button(icon: &str, title: &str, tooltip: &str) -> (gtk::Button, gtk::Labe
 }
 
 fn build(app: &gtk::Application) {
-    let window = gtk::ApplicationWindow::builder().application(app).title("PDF").default_width(1120).default_height(800).build();
+    let window = gtk::ApplicationWindow::builder().application(app).title("PDF").default_width(1280).default_height(800).build();
     window.add_css_class("pdf-window");
     // No client-side titlebar: Hyprland manages the window.
     window.set_titlebar(Some(&gtk::Box::new(gtk::Orientation::Horizontal, 0)));
@@ -148,12 +153,6 @@ fn build(app: &gtk::Application) {
         .vexpand(true)
         .child(&list)
         .build();
-    let head = chrome::sidebar_head("PDF", Some("Search the document, or your files (Ctrl+F)"));
-    head.toggle.connect_clicked(|_| toggle_sidebar());
-    if let Some(find) = &head.search {
-        find.connect_clicked(|_| find_files());
-    }
-    nav.append(&head.root);
     nav.append(&nav_scroll);
 
     // ----- Content -----
@@ -164,11 +163,8 @@ fn build(app: &gtk::Application) {
     stack.set_transition_type(gtk::StackTransitionType::Crossfade);
     stack.set_transition_duration(if prefs::get().reduce_motion { 0 } else { 160 });
 
-    let search = search_entry();
-    let strip = chrome::search_strip(&search);
     let content = gtk::Box::new(gtk::Orientation::Vertical, 0);
     content.set_hexpand(true);
-    content.append(&strip);
     content.append(&stack);
 
     let body = gtk::Box::new(gtk::Orientation::Horizontal, 0);
@@ -176,11 +172,31 @@ fn build(app: &gtk::Application) {
     body.append(&nav);
     body.append(&content);
 
-    let status = status_bar();
+    // ----- Header -----
+    // The app and where you are, the sidebar toggle; the open file's page in the
+    // middle (or the file search); its view controls, search and Settings at the end.
+    let header = chrome::app_header(&window, "npdf-document-symbolic", "PDF");
+    let toggle = widgets::bar_button("sidebar-show-symbolic", "Collapse the sidebar (Ctrl+B)");
+    toggle.connect_clicked(|_| toggle_sidebar());
+    header.start.append(&toggle);
+    let doc_center = widgets::hbox(2);
+    doc_center.set_visible(false);
+    header.center.append(&doc_center);
+    let search = search_entry();
+    header.center.append(&search);
+    let doc_end = widgets::hbox(2);
+    doc_end.set_visible(false);
+    header.end.set_spacing(4);
+    header.end.append(&doc_end);
+    let find = widgets::bar_button("system-search-symbolic", "Search the document, or your files (Ctrl+F)");
+    find.connect_clicked(|_| find_files());
+    header.end.append(&find);
+    header.end.append(&chrome::settings_button(settings_dialog::open));
+
     let frame = gtk::Box::new(gtk::Orientation::Vertical, 0);
     frame.add_css_class("window-frame");
+    frame.append(&header.root);
     frame.append(&body);
-    frame.append(&status);
 
     let overlay = gtk::Overlay::new();
     overlay.set_child(Some(&frame));
@@ -272,12 +288,15 @@ fn build(app: &gtk::Application) {
         sections,
         current: String::new(),
         overlay,
-        chrome: vec![strip.upcast(), status.upcast()],
+        chrome: vec![header.root.clone().upcast()],
         search,
+        header,
+        doc_center,
+        doc_end,
     };
     UI.with(|u| *u.borrow_mut() = Some(Rc::new(RefCell::new(ui))));
 
-    // The window title follows the open document.
+    // The window title and the header follow the open document.
     let w = window.clone();
     doc::subscribe(&window, move |c| {
         if matches!(c, doc::Change::Opened | doc::Change::Closed | doc::Change::Dirty) {
@@ -285,14 +304,40 @@ fn build(app: &gtk::Application) {
                 Some(d) => format!("{}{} — PDF", if d.dirty() { "• " } else { "" }, d.title()),
                 None => "PDF".to_string(),
             }));
+            refresh_header();
         }
     });
 }
 
-/// The file search: hidden until Ctrl+F or the sidebar's search button.
+/// The subtitle (the page, or the open file while reading) and the controls that
+/// belong to the open file, shown only while it's on screen.
+fn refresh_header() {
+    let Some(ui) = ui() else { return };
+    let u = ui.borrow();
+    let reading = u.current == "document" && doc::current().is_some();
+    let subtitle = match doc::current() {
+        Some(d) if reading => d.file_name(),
+        _ => u.sections.iter().find(|s| s.id == u.current).map(|s| s.title.to_string()).unwrap_or_default(),
+    };
+    u.header.set_subtitle(&subtitle);
+    u.header.subtitle.set_tooltip_text(doc::current().filter(|_| reading).map(|d| crate::paths::pretty(&d.path())).as_deref());
+    u.doc_center.set_visible(reading && u.doc_center.first_child().is_some());
+    u.doc_end.set_visible(reading && u.doc_end.first_child().is_some());
+    let search = u.search.clone();
+    drop(u);
+    // The file search belongs to the library; reading has its own.
+    if reading && search.is_visible() {
+        search.set_text("");
+        search.set_visible(false);
+    }
+}
+
+/// The file search, in the header: hidden until Ctrl+F or the search button.
 fn search_entry() -> gtk::SearchEntry {
     let search = gtk::SearchEntry::new();
     search.set_placeholder_text(Some("Search files"));
+    search.add_css_class("bar-search");
+    search.set_width_chars(24);
     search.set_visible(false);
     search.connect_search_changed(|e| on_search(&e.text()));
     search.connect_stop_search(|e| {
@@ -313,51 +358,6 @@ fn find_files() {
     let search = ui.borrow().search.clone();
     search.set_visible(true);
     search.grab_focus();
-}
-
-/// The bar along the bottom: the shortcuts on the left, the open file on the right.
-fn status_bar() -> gtk::Box {
-    let bar = widgets::hbox(16);
-    bar.add_css_class("status-bar");
-    let help = gtk::Button::new();
-    help.add_css_class("status-help");
-    let content = widgets::hbox(10);
-    content.append(&widgets::label("F1", "status-key"));
-    content.append(&widgets::label("Shortcuts", ""));
-    help.set_child(Some(&content));
-    help.set_tooltip_text(Some("Show the keyboard shortcuts"));
-    help.connect_clicked(|_| show_shortcuts());
-    bar.append(&help);
-    let spacer = widgets::hbox(0);
-    spacer.set_hexpand(true);
-    bar.append(&spacer);
-    let readout = widgets::label("", "status-readout");
-    readout.set_ellipsize(gtk::pango::EllipsizeMode::Middle);
-    bar.append(&readout);
-    let refresh = {
-        let readout = readout.clone();
-        move || {
-            readout.set_text(&match doc::current() {
-                Some(d) => format!(
-                    "{}{} · page {} of {}",
-                    d.file_name(),
-                    if d.dirty() { " · unsaved" } else { "" },
-                    d.page() + 1,
-                    d.n_pages()
-                ),
-                None => "No file open".to_string(),
-            });
-        }
-    };
-    refresh();
-    doc::subscribe(&readout, move |c| {
-        if !matches!(c, doc::Change::Content) {
-            refresh();
-        }
-    });
-    bar.append(&scroll_mode_button());
-    bar.append(&chrome::gear(settings_dialog::open));
-    bar
 }
 
 /// Every keyboard shortcut, for the shortcuts dialog and Settings.
@@ -384,6 +384,7 @@ pub const SHORTCUTS: &[(&[&str], &str)] = &[
     (&["Alt", "→"], "Forward again"),
     (&["F5"], "Present"),
     (&["F9"], "Show or hide the side panel"),
+    (&["F10"], "The more menu: save a copy, print, present, close"),
     (&["F11"], "Fullscreen"),
     (&["R"], "Reading mode: just the document"),
     (&["Ctrl", "B"], "Collapse or expand the sidebar"),
@@ -444,9 +445,6 @@ fn refresh_compact() {
     let Some(ui) = ui() else { return };
     let nav = ui.borrow().nav.clone();
     let compact = narrow() || collapsed_here();
-    if let Some(head) = nav.first_child().and_downcast::<gtk::Box>() {
-        chrome::set_head_compact(&head, compact);
-    }
     if compact {
         nav.add_css_class("compact");
     } else {
@@ -473,7 +471,7 @@ fn set_compact_hidden(root: &gtk::Box, compact: bool) {
         if w.has_css_class("compact-hide") {
             w.set_visible(!compact);
         }
-        // Icon-only: centre the icon in its pill, and the toggle in the column.
+        // Icon-only: centre the icon in its pill.
         if w.has_css_class("nav-item")
             && let Some(content) = w.downcast_ref::<gtk::Button>().and_then(|b| b.child())
         {
@@ -622,6 +620,7 @@ fn install_keys(window: &gtk::ApplicationWindow) {
         match key {
             gdk::Key::F1 => show_shortcuts(),
             gdk::Key::F9 => viewer::toggle_panel(),
+            gdk::Key::F10 if in_doc => viewer::open_more_menu(),
             gdk::Key::F11 => toggle_fullscreen(),
             gdk::Key::F5 if in_doc => viewer::toggle_presenting(),
             gdk::Key::Escape if w2.is_fullscreen() => set_fullscreen(false),
@@ -679,19 +678,6 @@ pub fn toggle_reading() {
     if !on {
         refresh_compact();
     }
-}
-
-/// The status bar's scrolling button: continuous, or one page at a time.
-fn scroll_mode_button() -> gtk::Button {
-    let icon = |continuous: bool| if continuous { "view-continuous-symbolic" } else { "npdf-fit-page-symbolic" };
-    let b = chrome::status_action(icon(prefs::get().continuous), "Continuous scrolling, or one page at a time", || {});
-    b.connect_clicked(move |b| {
-        let on = !prefs::get().continuous;
-        prefs::update(|p| p.continuous = on);
-        viewer::relayout();
-        b.set_icon_name(icon(on));
-    });
-    b
 }
 
 pub fn toggle_fullscreen() {
@@ -782,6 +768,13 @@ fn ensure_built(id: &str) -> bool {
         page.bare();
     }
     build(&page);
+    if sid == "document"
+        && let Some((center, end)) = viewer::header_parts()
+    {
+        let u = ui.borrow();
+        u.doc_center.append(&center);
+        u.doc_end.append(&end);
+    }
     let page: gtk::Widget = page.root.upcast();
     mark_page(&page, narrow());
     let stack = ui.borrow().stack.clone();
@@ -816,6 +809,7 @@ pub fn navigate(id: &str) {
     u.current = id.clone();
     drop(u);
     prefs::update(|p| p.last_section = id);
+    refresh_header();
     if changed {
         refresh_compact();
     }

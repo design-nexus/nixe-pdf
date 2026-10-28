@@ -187,7 +187,7 @@ fn card(r: recent::Recent) -> gtk::Button {
     info.append(&title);
     let dir = r.path.parent().map(paths::pretty).unwrap_or_default();
     let place = widgets::label(&dir, "card-meta");
-    place.add_css_class("mono");
+    place.add_css_class("dim");
     place.set_ellipsize(gtk::pango::EllipsizeMode::Start);
     place.set_max_width_chars(24);
     info.append(&place);

@@ -24,7 +24,7 @@ struct State {
     selected: RefCell<Vec<usize>>,
     /// The last tile clicked, for shift-click ranges.
     anchor: Cell<Option<usize>>,
-    toolbar: gtk::FlowBox,
+    toolbar: gtk::Box,
 }
 
 thread_local! {
@@ -49,14 +49,9 @@ pub fn build(page: &Page) {
     );
 
     let root = widgets::vbox(0);
-    // The buttons wrap onto more rows when the window is narrow.
-    let toolbar = gtk::FlowBox::new();
+    // One row of icon buttons: selecting, arranging, adding and saving.
+    let toolbar = widgets::hbox(2);
     toolbar.add_css_class("pages-toolbar");
-    toolbar.set_selection_mode(gtk::SelectionMode::None);
-    toolbar.set_column_spacing(8);
-    toolbar.set_row_spacing(8);
-    toolbar.set_max_children_per_line(4);
-    toolbar.set_homogeneous(false);
     root.append(&toolbar);
     let grid = gtk::FlowBox::new();
     grid.add_css_class("pages-grid");
@@ -76,12 +71,13 @@ pub fn build(page: &Page) {
     page.body.append(&stack);
 
     let count = widgets::label("", "dim");
+    count.add_css_class("tnum");
     count.set_valign(gtk::Align::Center);
-    let save = widgets::labeled_button("document-save-symbolic", "Save");
-    save.set_tooltip_text(Some("Save (Ctrl+S)"));
+    count.set_margin_start(8);
+    let save = tool("document-save-symbolic", "Save (Ctrl+S)");
+    save.add_css_class("save-button");
     save.connect_clicked(|_| doc::save());
-    let undo = gtk::Button::from_icon_name("edit-undo-symbolic");
-    undo.set_tooltip_text(Some("Undo (Ctrl+Z)"));
+    let undo = tool("edit-undo-symbolic", "Undo (Ctrl+Z)");
     undo.connect_clicked(|_| doc::undo());
     // Dropping PDFs on the empty part of the grid adds their pages at the end.
     let drop = gtk::DropTarget::new(gdk::FileList::static_type(), gdk::DragAction::COPY);
@@ -152,55 +148,90 @@ fn insert_dropped(value: &gtk::glib::Value, at: Option<usize>) -> bool {
     ok
 }
 
-fn chip(icon: &str, text: &str, tip: &str) -> gtk::Button {
-    let b = widgets::labeled_button(icon, text);
-    b.set_tooltip_text(Some(tip));
+fn tool(icon: &str, tip: &str) -> gtk::Button {
+    let b = widgets::bar_button(icon, tip);
+    b.add_css_class("tb-btn");
+    b
+}
+
+/// Delete: an icon that asks for a second click (within 4 s) before it acts.
+fn delete_button(act: impl Fn() + 'static) -> gtk::Button {
+    const ICON: &str = "user-trash-symbolic";
+    let b = tool(ICON, "Remove the selected pages (undo brings them back)");
+    b.add_css_class("danger");
+    let armed = Rc::new(Cell::new(false));
+    b.connect_clicked(move |b| {
+        if armed.replace(false) {
+            b.set_icon_name(ICON);
+            b.remove_css_class("destructive-action");
+            act();
+            return;
+        }
+        armed.set(true);
+        b.set_label("Click again to delete");
+        b.add_css_class("destructive-action");
+        let (b, armed) = (b.clone(), armed.clone());
+        gtk::glib::timeout_add_local_once(std::time::Duration::from_secs(4), move || {
+            if armed.replace(false) {
+                b.set_icon_name(ICON);
+                b.remove_css_class("destructive-action");
+            }
+        });
+    });
     b
 }
 
 fn build_toolbar(st: &Rc<State>) {
-    let all = gtk::Button::with_label("Select all");
+    let all = tool("edit-select-all-symbolic", "Select all the pages");
     all.connect_clicked(|_| {
         if let (Some(st), Some(d)) = (state(), doc::current()) {
             *st.selected.borrow_mut() = (0..d.n_pages()).collect();
             refresh_selection(&st);
         }
     });
-    let none = gtk::Button::with_label("Select none");
+    let none = tool("edit-clear-symbolic", "Select none");
     none.connect_clicked(|_| {
         if let Some(st) = state() {
             st.selected.borrow_mut().clear();
             refresh_selection(&st);
         }
     });
-    let left = chip("npdf-rotate-left-symbolic", "Left", "Turn the selected pages a quarter turn left");
+    let left = tool("npdf-rotate-left-symbolic", "Turn the selected pages a quarter turn left");
     left.connect_clicked(|_| rotate(-90));
-    let right = chip("npdf-rotate-right-symbolic", "Right", "Turn the selected pages a quarter turn right");
+    let right = tool("npdf-rotate-right-symbolic", "Turn the selected pages a quarter turn right");
     right.connect_clicked(|_| rotate(90));
-    let earlier = chip("go-previous-symbolic", "Earlier", "Move the selected pages one place earlier");
+    let earlier = tool("go-previous-symbolic", "Move the selected pages one place earlier");
     earlier.connect_clicked(|_| nudge(-1));
-    let later = chip("go-next-symbolic", "Later", "Move the selected pages one place later");
+    let later = tool("go-next-symbolic", "Move the selected pages one place later");
     later.connect_clicked(|_| nudge(1));
-    let delete = widgets::two_click("Delete", "Click again to delete", delete_selected);
-    delete.set_tooltip_text(Some("Remove the selected pages (undo brings them back)"));
-    let insert = chip("list-add-symbolic", "Add pages", "Add every page of another PDF after the selection");
+    let delete = delete_button(delete_selected);
+    let insert = tool("list-add-symbolic", "Add every page of another PDF after the selection");
     insert.connect_clicked(|_| insert_dialog());
-    let extract = chip("document-save-as-symbolic", "Save as new file", "Save the selected pages (or all of them) as a new PDF");
+    let extract = tool("document-save-as-symbolic", "Save the selected pages (or all of them) as a new PDF");
     extract.connect_clicked(|_| extract_dialog());
-    let group = |items: &[&gtk::Widget]| {
-        let g = widgets::hbox(6);
-        for w in items {
-            g.append(*w);
-        }
-        let child = gtk::FlowBoxChild::new();
-        child.set_focusable(false);
-        child.set_child(Some(&g));
-        st.toolbar.append(&child);
+    let bar = &st.toolbar;
+    let gap = || {
+        let g = widgets::hbox(0);
+        g.add_css_class("tb-gap");
+        g
     };
-    group(&[all.upcast_ref(), none.upcast_ref(), st.count.upcast_ref()]);
-    group(&[left.upcast_ref(), right.upcast_ref(), earlier.upcast_ref(), later.upcast_ref(), delete.upcast_ref()]);
-    group(&[insert.upcast_ref(), extract.upcast_ref()]);
-    group(&[st.undo.upcast_ref(), st.save.upcast_ref()]);
+    for w in [all.upcast_ref::<gtk::Widget>(), none.upcast_ref()] {
+        bar.append(w);
+    }
+    bar.append(&gap());
+    for w in [left.upcast_ref::<gtk::Widget>(), right.upcast_ref(), earlier.upcast_ref(), later.upcast_ref(), delete.upcast_ref()] {
+        bar.append(w);
+    }
+    bar.append(&gap());
+    bar.append(&insert);
+    bar.append(&extract);
+    bar.append(&st.count);
+    let spacer = widgets::hbox(0);
+    spacer.set_hexpand(true);
+    bar.append(&spacer);
+    bar.append(&st.undo);
+    st.save.set_margin_start(6);
+    bar.append(&st.save);
 }
 
 fn rebuild() {
@@ -227,7 +258,7 @@ fn rebuild() {
         picture.set_can_shrink(true);
         picture.set_content_fit(gtk::ContentFit::Fill);
         picture.set_size_request(TILE_W, (f64::from(TILE_W) * h / w.max(1.0)).round() as i32);
-        let num = widgets::label(&(i + 1).to_string(), "mono");
+        let num = widgets::label(&(i + 1).to_string(), "tnum");
         num.add_css_class("thumb-number");
         num.set_halign(gtk::Align::Center);
         card.append(&picture);
@@ -522,7 +553,7 @@ pub fn merge_dialog() {
             for (i, p) in files.borrow().iter().enumerate() {
                 let row = widgets::hbox(6);
                 row.add_css_class("settings-option");
-                let name = widgets::label(&paths::pretty(p), "mono");
+                let name = widgets::label(&paths::pretty(p), "dim");
                 name.set_hexpand(true);
                 name.set_ellipsize(gtk::pango::EllipsizeMode::Start);
                 row.append(&name);

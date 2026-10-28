@@ -96,6 +96,7 @@ Launching it again while it's running opens the file in a new tab of the existin
 | <kbd>Delete</kbd> | Delete the selected annotation |
 | <kbd>F5</kbd> | Present |
 | <kbd>F9</kbd> / <kbd>F11</kbd> | Side panel / fullscreen |
+| <kbd>F10</kbd> | The more menu: save a copy, print, present, close |
 | <kbd>F1</kbd> | All keyboard shortcuts |
 | <kbd>Ctrl</kbd>+<kbd>B</kbd> | Collapse or expand the sidebar (it's collapsed while reading, by default) |
 | <kbd>Esc</kbd> | Stop presenting, close the search, clear the selection, or go back to Select |
