@@ -207,12 +207,14 @@ fn icon_toggle(icon: &str, tooltip: &str) -> gtk::ToggleButton {
     let b = gtk::ToggleButton::new();
     b.set_child(Some(&gtk::Image::from_icon_name(icon)));
     b.set_tooltip_text(Some(tooltip));
+    b.set_valign(gtk::Align::Center);
     b
 }
 
 fn icon_btn(icon: &str, tooltip: &str) -> gtk::Button {
     let b = gtk::Button::from_icon_name(icon);
     b.set_tooltip_text(Some(tooltip));
+    b.set_valign(gtk::Align::Center);
     b
 }
 
@@ -291,8 +293,10 @@ impl View {
         // ----- Tabs -----
         let tab_bar = widgets::hbox(4);
         tab_bar.add_css_class("tab-bar");
+        widgets::follow_row_height(&tab_bar);
         let tabs = widgets::hbox(2);
         tabs.add_css_class("tabs");
+        tabs.set_valign(gtk::Align::Center);
         let tab_scroll = gtk::ScrolledWindow::builder()
             .hscrollbar_policy(gtk::PolicyType::External)
             .vscrollbar_policy(gtk::PolicyType::Never)
@@ -323,6 +327,9 @@ impl View {
         let strip = gtk::Box::new(gtk::Orientation::Horizontal, 12);
         strip.add_css_class("tool-strip");
         let (left, right) = (widgets::hbox(2), widgets::hbox(2));
+        // Each half is one row of the sidebar's grid, also when they stack.
+        widgets::follow_row_height(&left);
+        widgets::follow_row_height(&right);
         left.set_hexpand(true);
         right.set_halign(gtk::Align::End);
         strip.append(&left);

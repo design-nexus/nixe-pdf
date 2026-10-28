@@ -52,6 +52,7 @@ pub fn build(page: &Page) {
     // One row of icon buttons: selecting, arranging, adding and saving.
     let toolbar = widgets::hbox(2);
     toolbar.add_css_class("pages-toolbar");
+    widgets::follow_row_height(&toolbar);
     root.append(&toolbar);
     let grid = gtk::FlowBox::new();
     grid.add_css_class("pages-grid");

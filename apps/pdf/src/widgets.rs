@@ -5,6 +5,26 @@ pub use nyx_ui::widgets::*;
 use gtk::prelude::*;
 use std::rc::Rc;
 
+/// The height of a sidebar item at the suite's density. Rows beside the
+/// icon-only sidebar (the tabs, the tool strip, the pages toolbar) take it too,
+/// so their buttons line up with its icons. Must match nyx-theme's 2.0 density
+/// table.
+pub fn row_height() -> i32 {
+    match nyx_theme::read_suite().map(|s| s.density).as_deref() {
+        Some("compact") => 30,
+        Some("relaxed") => 38,
+        _ => 34,
+    }
+}
+
+/// Keep `row` at [`row_height`], following density changes made in any Nyx app.
+pub fn follow_row_height(row: &impl IsA<gtk::Widget>) {
+    let row = row.clone().upcast::<gtk::Widget>();
+    row.set_size_request(-1, row_height());
+    let r = row.clone();
+    nyx_theme::subscribe(&row, move || r.set_size_request(-1, row_height()));
+}
+
 // ---------- Page / group ----------
 
 pub struct Page {

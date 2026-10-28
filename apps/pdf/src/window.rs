@@ -133,6 +133,8 @@ fn build(app: &gtk::Application) {
     for s in sections.iter().filter(|s| s.id != "settings") {
         if s.group != last_group {
             let g = widgets::label(&s.group.to_uppercase(), "nav-group");
+            // Hidden in the icon-only sidebar, so its items keep to the rows beside it.
+            g.add_css_class("compact-hide");
             if last_group.is_empty() {
                 g.add_css_class("first");
             }
