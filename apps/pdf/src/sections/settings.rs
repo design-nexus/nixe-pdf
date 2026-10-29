@@ -67,6 +67,21 @@ pub fn build(page: &Page) {
     });
     g.add(&widgets::row("Author name", "Stored on the notes and markup you add.", Some(author.upcast_ref())));
     g.add(&widgets::row("Highlight color", "The color new highlights start with.", Some(crate::viewer::colour::pref_row().upcast_ref())));
+    for (title, desc, min, max, step, value, field) in [
+        ("Highlight opacity", "Opacity for new highlights.", 0.1, 1.0, 0.05, p.highlight_opacity, 0),
+        ("Pen width", "Width of new drawings, in points.", 0.5, 12.0, 0.5, p.ink_width, 1),
+        ("Text box size", "Text size for new text boxes, in points.", 6.0, 48.0, 1.0, p.text_size, 2),
+    ] {
+        let spin = gtk::SpinButton::with_range(min, max, step);
+        spin.set_digits(if field == 0 { 2 } else { 1 });
+        spin.set_value(value);
+        spin.connect_value_changed(move |s| prefs::update(|p| match field {
+            0 => p.highlight_opacity = s.value(),
+            1 => p.ink_width = s.value(),
+            _ => p.text_size = s.value(),
+        }));
+        g.add(&widgets::row(title, desc, Some(spin.upcast_ref())));
+    }
     let sigs = paths::signatures_dir();
     let n = std::fs::read_dir(&sigs).map(|d| d.flatten().count()).unwrap_or(0);
     let desc = format!("{} saved. They live in <tt>{}</tt>.", fmt::count(n, "signature", "signatures"), glib::markup_escape_text(&paths::pretty(&sigs)));
