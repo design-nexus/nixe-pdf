@@ -748,6 +748,7 @@ pub fn offer_recovery() {
     let Some(next) = list.pop() else { return };
     let name = next.source.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
     let (dialog, card) = crate::widgets::dialog("Recover your changes?", 460);
+    crate::dialog_dismissal::add(&dialog, &card, "Cancel");
     let d = crate::widgets::label(
         &format!("{name} had changes that weren't saved when PDF last closed. Recover them to keep working, then save."),
         "dim",

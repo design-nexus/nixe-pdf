@@ -1,5 +1,6 @@
 //! PDF — a PDF viewer and editor for Omarchy.
 
+mod dialog_dismissal;
 mod cmd;
 mod control;
 mod doc;
